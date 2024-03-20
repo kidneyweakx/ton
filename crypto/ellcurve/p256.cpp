@@ -51,14 +51,7 @@ td::Status p256_check_signature(td::Slice data, td::Slice public_key, td::Slice 
   if (EVP_PKEY_set1_tls_encodedpoint(pkey, public_key.ubegin(), public_key.size()) <= 0) {
     return td::Status::Error("Failed to import public key");
   }
-  EVP_MD_CTX* md_ctx = EVP_MD_CTX_new();
-  if (md_ctx == nullptr) {
-    return td::Status::Error("Can't create EVP_MD_CTX");
-  }
-  SCOPE_EXIT {
-    EVP_MD_CTX_free(md_ctx);
-  };
-  if (EVP_DigestVerifyInit(md_ctx, nullptr, nullptr, nullptr, pkey) <= 0) {
+  if (EVP_PKEY_verify_init(pctx) <= 0) {
     return td::Status::Error("Can't init DigestVerify");
   }
   ECDSA_SIG* sig = ECDSA_SIG_new();
@@ -82,7 +75,7 @@ td::Status p256_check_signature(td::Slice data, td::Slice public_key, td::Slice 
   SCOPE_EXIT {
     OPENSSL_free(signature_encoded);
   };
-  if (EVP_DigestVerify(md_ctx, signature_encoded, signature_len, data.ubegin(), data.size()) == 1) {
+  if (EVP_PKEY_verify(pctx, signature_encoded, signature_len, data.ubegin(), data.size()) == 1) {
     return td::Status::OK();
   }
   return td::Status::Error("Wrong signature");
